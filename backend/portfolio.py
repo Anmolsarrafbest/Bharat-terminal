@@ -13,7 +13,64 @@ import backend.config as cfg
 
 
 PORTFOLIO_FILE = os.path.join(cfg.BASE_DIR, 'portfolio.json')
+HOLDINGS_FILE = os.path.join(cfg.BASE_DIR, 'holdings.json')
 
+
+# ═══════════════════════════════════════════
+#  HOLDINGS — stored in holdings.json
+#  Populated from Groww sync or manual add.
+#  No demo/mock data — file starts empty.
+# ═══════════════════════════════════════════
+
+def load_holdings():
+    """Load holdings from local JSON file. Returns [] if no file yet."""
+    try:
+        if os.path.exists(HOLDINGS_FILE):
+            with open(HOLDINGS_FILE, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"  ⚠ Error loading holdings: {e}")
+    return []
+
+
+def save_holdings(holdings):
+    """Persist the full holdings array to disk."""
+    try:
+        with open(HOLDINGS_FILE, 'w') as f:
+            json.dump(holdings, f, indent=2)
+    except Exception as e:
+        print(f"  ⚠ Error saving holdings: {e}")
+
+
+def add_holding(holding):
+    """Append a single holding and save."""
+    holdings = load_holdings()
+    holdings.append(holding)
+    save_holdings(holdings)
+    return holdings
+
+
+def update_holding(index, holding):
+    """Update a holding at a given index."""
+    holdings = load_holdings()
+    if 0 <= index < len(holdings):
+        holdings[index] = holding
+        save_holdings(holdings)
+    return holdings
+
+
+def delete_holding(index):
+    """Remove a holding by index."""
+    holdings = load_holdings()
+    if 0 <= index < len(holdings):
+        holdings.pop(index)
+        save_holdings(holdings)
+    return holdings
+
+
+# ═══════════════════════════════════════════
+#  GROWW PORTFOLIO (brokerage sync)
+# ═══════════════════════════════════════════
 
 def fetch_portfolio_from_groww():
     """Fetch real holdings from Groww API and save locally"""
@@ -60,8 +117,22 @@ def fetch_portfolio_from_groww():
             'holdings': holdings,
         }
 
-        # Save to local file
+        # Save raw Groww data to portfolio.json (brokerage cache)
         _save_portfolio(portfolio)
+
+        # Also convert & save to holdings.json so dashboard can display them
+        frontend_holdings = []
+        for h in holdings:
+            frontend_holdings.append({
+                'symbol': h['symbol'],
+                'sector': 'Others',     # Groww doesn't provide sector
+                'qty': h['quantity'],
+                'avg': h['avgPrice'],
+                'ltp': 0,               # will be filled by live data
+                'daychg': 0,
+            })
+        save_holdings(frontend_holdings)
+
         print(f"  ✅ Imported {len(holdings)} holdings from Groww (₹{total_invested:,.2f} invested)")
         return portfolio
 

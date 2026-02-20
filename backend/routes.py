@@ -15,7 +15,11 @@ from .config import (
 from .stock_data import fetch_stock_data, save_market_close
 from .groww_api import groww_is_configured
 from .upstox_api import upstox_is_configured, upstox_has_token
-from .portfolio import fetch_portfolio_from_groww, get_portfolio_with_live_prices
+from .portfolio import (
+    fetch_portfolio_from_groww, get_portfolio_with_live_prices,
+    load_holdings, save_holdings,
+    add_holding, update_holding, delete_holding,
+)
 import backend.config as cfg
 
 
@@ -250,3 +254,39 @@ def register_routes(app):
         if result:
             return jsonify({'status': 'synced', 'holdings': len(result['holdings']), 'invested': result['totalInvested']})
         return jsonify({'error': 'Failed to sync portfolio from Groww'}), 500
+
+    # ── Manual Holdings CRUD ──
+
+    @app.route('/api/holdings', methods=['GET'])
+    def api_get_holdings():
+        """Return all holdings from holdings.json"""
+        holdings = load_holdings()
+        return jsonify({'holdings': holdings})
+
+    @app.route('/api/holdings', methods=['POST'])
+    def api_save_holdings():
+        """Replace the entire holdings array"""
+        data = request.get_json(force=True)
+        holdings = data.get('holdings', [])
+        save_holdings(holdings)
+        return jsonify({'status': 'saved', 'count': len(holdings)})
+
+    @app.route('/api/holdings/add', methods=['POST'])
+    def api_add_holding():
+        """Add a single holding"""
+        holding = request.get_json(force=True)
+        holdings = add_holding(holding)
+        return jsonify({'status': 'added', 'holdings': holdings})
+
+    @app.route('/api/holdings/<int:index>', methods=['PUT'])
+    def api_update_holding(index):
+        """Update a holding at given index"""
+        holding = request.get_json(force=True)
+        holdings = update_holding(index, holding)
+        return jsonify({'status': 'updated', 'holdings': holdings})
+
+    @app.route('/api/holdings/<int:index>', methods=['DELETE'])
+    def api_delete_holding(index):
+        """Delete a holding at given index"""
+        holdings = delete_holding(index)
+        return jsonify({'status': 'deleted', 'holdings': holdings})

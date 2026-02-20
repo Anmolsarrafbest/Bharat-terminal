@@ -5,3 +5,4 @@ __pycache__/
 node_modules/
 saved_closes.json
 portfolio.json
+holdings.json

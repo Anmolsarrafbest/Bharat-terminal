@@ -258,8 +258,33 @@ async function fetchBatchQuotes(symbols) {
   return null;
 }
 
+/* ── Market hours helper (IST: Mon-Fri, 9:15 AM - 3:30 PM) ── */
+function isMarketOpen() {
+  const now = new Date();
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const day = ist.getDay();       // 0=Sun, 6=Sat
+  const hr = ist.getHours();
+  const mn = ist.getMinutes();
+  const mins = hr * 60 + mn;
+  // Mon(1)–Fri(5), 9:15(555) to 15:30(930)
+  return day >= 1 && day <= 5 && mins >= 555 && mins < 930;
+}
+
 async function fetchLiveData() {
   const badge = document.getElementById('data-source-badge');
+
+  // Skip fetching when market is closed — use cached data
+  if (!isMarketOpen()) {
+    if (!liveDataEnabled) {
+      // First load: fetch once to populate, then stop
+      badge.textContent = 'CLOSED';
+      badge.className = 'data-source-badge dsb-sim';
+      badge.title = 'Market closed — using last available data';
+    }
+    // If we already have live data from a previous fetch, keep showing it
+    if (liveDataEnabled) return;
+  }
+
   badge.textContent = 'LOADING…';
   badge.className = 'data-source-badge dsb-sim';
 
@@ -370,7 +395,12 @@ async function fetchLiveData() {
         h.daychg = mkt.chgP;
       }
     });
-    saveHoldings();
+    try {
+      await saveHoldings();
+    } catch (saveErr) {
+      console.error('Failed to save holdings after live data update:', saveErr);
+      showToast('⚠️ Could not save your holdings. Recent changes may not be saved.');
+    }
 
     // Mark as LIVE
     liveDataEnabled = true;
@@ -393,9 +423,21 @@ async function fetchLiveData() {
   }
 }
 
-// On load: try live data, then refresh every 30 seconds
+// On load: fetch once, then use smart interval based on market hours
 fetchLiveData();
-liveRefreshInterval = setInterval(fetchLiveData, 30 * 1000);
+
+function startSmartRefresh() {
+  if (liveRefreshInterval) clearInterval(liveRefreshInterval);
+  const interval = isMarketOpen() ? 30 * 1000 : 5 * 60 * 1000; // 30s during market, 5min otherwise
+  liveRefreshInterval = setInterval(() => {
+    fetchLiveData();
+    // Re-check interval when market open/close transitions
+    const nowOpen = isMarketOpen();
+    const currentInterval = nowOpen ? 30 * 1000 : 5 * 60 * 1000;
+    if (currentInterval !== interval) startSmartRefresh();
+  }, interval);
+}
+startSmartRefresh();
 
 /* ── LIVE NEWS FETCHER ── */
 async function fetchLiveNews() {
@@ -775,8 +817,19 @@ function renderMacro() {
 }
 
 /* ── PORTFOLIO ── */
-function saveHoldings() {
-  localStorage.setItem('bt_holdings', JSON.stringify(holdings));
+async function saveHoldings() {
+  // Persist to backend (holdings.json) — falls back to localStorage
+  try {
+    const r = await fetch('http://localhost:5000/api/holdings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ holdings }),
+    });
+    if (!r.ok) throw new Error('Backend save failed');
+  } catch (e) {
+    console.warn('Backend save failed, using localStorage fallback:', e.message);
+    localStorage.setItem('bt_holdings', JSON.stringify(holdings));
+  }
 }
 
 function renderPortfolio() {
@@ -804,7 +857,7 @@ function renderPortfolio() {
         <button class="icon-btn" onclick="deleteHolding(${i})" title="Delete" style="margin-left:4px;">✕</button>
       </td>
     </tr>`;
-  }).join('') || `<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text-muted)">No holdings. Click <b>+ ADD</b> to start tracking.</td></tr>`;
+  }).join('') || `<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text-muted)">No holdings yet. Click <b>⟳ SYNC GROWW</b> to import your portfolio or <b>+ ADD</b> to add manually.</td></tr>`;
 
   // Stats
   const totalPnl = holdings.reduce((a, h) => a + (h.qty * h.ltp - h.qty * h.avg), 0);
@@ -918,16 +971,16 @@ function editHolding(i) {
 }
 window.editHolding = editHolding;
 
-function deleteHolding(i) {
+async function deleteHolding(i) {
   holdings.splice(i, 1);
-  saveHoldings();
+  await saveHoldings();
   renderPortfolio();
   renderDashboard();
   showToast('Holding removed.');
 }
 window.deleteHolding = deleteHolding;
 
-function saveHolding() {
+async function saveHolding() {
   const sym = document.getElementById('form-symbol').value.trim().toUpperCase();
   const sector = document.getElementById('form-sector').value;
   const qty = parseFloat(document.getElementById('form-qty').value);
@@ -947,7 +1000,7 @@ function saveHolding() {
     holdings.push(entry);
     showToast(`${sym} added to portfolio.`);
   }
-  saveHoldings();
+  await saveHoldings();
   closeAddModal();
   renderPortfolio();
   renderDashboard();
@@ -1252,24 +1305,47 @@ if (wlInput) {
   });
 }
 
-/* ── DEMO HOLDINGS ── */
-function loadDemoHoldings() {
-  if (holdings.length === 0) {
-    holdings = [
-      { symbol: 'RELIANCE', sector: 'Energy', qty: 50, avg: 2650.00, ltp: 2945.60, daychg: 1.44 },
-      { symbol: 'TCS', sector: 'IT', qty: 20, avg: 3600.00, ltp: 3812.75, daychg: -0.74 },
-      { symbol: 'HDFCBANK', sector: 'Financials', qty: 100, avg: 1520.00, ltp: 1634.25, daychg: 1.16 },
-      { symbol: 'SUNPHARMA', sector: 'Pharma', qty: 75, avg: 1450.00, ltp: 1682.45, daychg: 1.48 },
-      { symbol: 'MARUTI', sector: 'Auto', qty: 10, avg: 9800.00, ltp: 11425.80, daychg: 1.65 },
-      { symbol: 'ITC', sector: 'FMCG', qty: 300, avg: 385.00, ltp: 472.30, daychg: 0.75 },
-    ];
-    saveHoldings();
+/* ── LOAD HOLDINGS FROM BACKEND ── */
+async function loadHoldings() {
+  try {
+    const r = await fetch('http://localhost:5000/api/holdings');
+    if (r.ok) {
+      const data = await r.json();
+      holdings = data.holdings || [];
+      return;
+    }
+  } catch (e) {
+    console.warn('Backend holdings fetch failed:', e.message);
   }
+  // Backend offline — holdings stay empty
+  holdings = [];
 }
 
+/* ── SYNC PORTFOLIO FROM GROWW ── */
+async function syncFromGroww() {
+  showToast('Syncing portfolio from Groww…');
+  try {
+    const r = await fetch('http://localhost:5000/api/portfolio/sync');
+    if (r.ok) {
+      const data = await r.json();
+      showToast(`✅ Synced ${data.holdings} holdings from Groww (₹${data.invested.toLocaleString('en-IN')})`);
+      // Reload holdings (Groww sync saves to holdings.json)
+      await loadHoldings();
+      renderPortfolio();
+      renderDashboard();
+    } else {
+      const err = await r.json();
+      showToast(`❌ Groww sync failed: ${err.error || 'Unknown error'}`);
+    }
+  } catch (e) {
+    showToast(`❌ Groww sync failed: ${e.message}`);
+  }
+}
+window.syncFromGroww = syncFromGroww;
+
 /* ── BOOTSTRAP ── */
-function init() {
-  loadDemoHoldings();
+async function init() {
+  await loadHoldings();
   setupGlobalSearch();
   renderIndexStrip();
   renderTicker();
