@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bharat Terminal — India Market Intelligence</title>
+  <meta name="description"
+    content="Real-time India stock market terminal — NIFTY, SENSEX, portfolio tracker, news and analytics." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- ─── TOP HEADER BAR ─── -->
+  <header class="topbar" id="topbar">
+    <div class="topbar-left">
+      <div class="logo">
+        <span class="logo-icon">₹</span>
+        <span class="logo-text">BHARAT<span class="logo-accent">TERMINAL</span></span>
+      </div>
+      <nav class="topnav" id="topnav">
+        <button class="nav-btn active" data-panel="dashboard" id="nav-dashboard">DASHBOARD</button>
+        <button class="nav-btn" data-panel="portfolio" id="nav-portfolio">PORTFOLIO</button>
+        <button class="nav-btn" data-panel="markets" id="nav-markets">MARKETS</button>
+        <button class="nav-btn" data-panel="news" id="nav-news">NEWS</button>
+        <button class="nav-btn" data-panel="watchlist" id="nav-watchlist">WATCHLIST</button>
+      </nav>
+    </div>
+    <div class="topbar-center">
+      <div class="ticker-wrap">
+        <div class="ticker-track" id="ticker-track"></div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <!-- Global Stock Search -->
+      <div class="global-search-wrap" id="global-search-wrap">
+        <span class="global-search-icon">⌕</span>
+        <input class="global-search" type="text" id="global-search" placeholder="Search any stock…"
+          autocomplete="off" />
+        <div class="global-search-results" id="global-search-results" style="display:none"></div>
+      </div>
+      <span class="data-source-badge dsb-sim" id="data-source-badge" title="Data source">SIM</span>
+      <div class="clock-block">
+        <span class="clock-label">IST</span>
+        <span class="clock" id="clock">--:--:--</span>
+      </div>
+      <div class="market-status" id="market-status-badge">
+        <span class="status-dot"></span><span class="status-text">OPEN</span>
+      </div>
+      <button class="add-btn" id="add-holding-btn" title="Add Holding">+ HOLDING</button>
+    </div>
+  </header>
+
+  <!-- ─── INDEX HERO STRIP ─── -->
+  <div class="index-strip" id="index-strip">
+    <div class="index-card" id="card-nifty">
+      <span class="idx-name">NIFTY 50</span>
+      <span class="idx-val" id="nifty-val">--</span>
+      <span class="idx-chg" id="nifty-chg">-- (--)</span>
+    </div>
+    <div class="index-card" id="card-sensex">
+      <span class="idx-name">SENSEX</span>
+      <span class="idx-val" id="sensex-val">--</span>
+      <span class="idx-chg" id="sensex-chg">-- (--)</span>
+    </div>
+    <div class="index-card" id="card-banknifty">
+      <span class="idx-name">BANK NIFTY</span>
+      <span class="idx-val" id="banknifty-val">--</span>
+      <span class="idx-chg" id="banknifty-chg">-- (--)</span>
+    </div>
+    <div class="index-card" id="card-midcap">
+      <span class="idx-name">NIFTY MIDCAP</span>
+      <span class="idx-val" id="midcap-val">--</span>
+      <span class="idx-chg" id="midcap-chg">-- (--)</span>
+    </div>
+    <div class="index-card" id="card-vix">
+      <span class="idx-name">INDIA VIX</span>
+      <span class="idx-val" id="vix-val">--</span>
+      <span class="idx-chg" id="vix-chg">-- (--)</span>
+    </div>
+  </div>
+
+  <!-- ─── MAIN CONTENT AREA ─── -->
+  <main class="main-content" id="main-content">
+
+    <!-- ══════ DASHBOARD PANEL ══════ -->
+    <section class="panel active" id="panel-dashboard">
+      <div class="dashboard-grid">
+
+        <!-- Portfolio Summary Card -->
+        <div class="card portfolio-summary-card" id="port-summary">
+          <div class="card-header">
+            <span class="card-title">PORTFOLIO OVERVIEW</span>
+            <span class="card-badge" id="port-badge">TODAY</span>
+          </div>
+          <div class="port-hero">
+            <div class="port-total">
+              <span class="hero-label">TOTAL VALUE</span>
+              <span class="hero-val" id="port-total-val">₹0.00</span>
+            </div>
+            <div class="port-pnl-block">
+              <div class="pnl-row">
+                <span class="pnl-label">Day P&L</span>
+                <span class="pnl-val" id="port-day-pnl">₹0.00 (0.00%)</span>
+              </div>
+              <div class="pnl-row">
+                <span class="pnl-label">Total P&L</span>
+                <span class="pnl-val" id="port-total-pnl">₹0.00 (0.00%)</span>
+              </div>
+              <div class="pnl-row">
+                <span class="pnl-label">Invested</span>
+                <span class="pnl-val neutral" id="port-invested">₹0.00</span>
+              </div>
+            </div>
+          </div>
+          <canvas class="sparkline-chart" id="portfolio-sparkline" width="380" height="70"></canvas>
+        </div>
+
+        <!-- Allocation Pie -->
+        <div class="card allocation-card">
+          <div class="card-header">
+            <span class="card-title">SECTOR ALLOCATION</span>
+          </div>
+          <div class="alloc-content">
+            <canvas id="alloc-pie" width="180" height="180"></canvas>
+            <div class="alloc-legend" id="alloc-legend"></div>
+          </div>
+        </div>
+
+        <!-- Top Movers -->
+        <div class="card movers-card">
+          <div class="card-header">
+            <span class="card-title">TOP MOVERS</span>
+            <div class="tab-switcher">
+              <button class="tab-btn active" id="tab-gainers" onclick="switchMovers('gainers')">GAINERS</button>
+              <button class="tab-btn" id="tab-losers" onclick="switchMovers('losers')">LOSERS</button>
+            </div>
+          </div>
+          <div class="movers-list" id="movers-list"></div>
+        </div>
+
+        <!-- Mini News -->
+        <div class="card mini-news-card">
+          <div class="card-header">
+            <span class="card-title">MARKET PULSE</span>
+            <span class="live-dot-wrap"><span class="live-dot"></span>LIVE</span>
+          </div>
+          <div class="mini-news-list" id="mini-news-list"></div>
+        </div>
+
+        <!-- FII/DII Activity -->
+        <div class="card fii-card">
+          <div class="card-header"><span class="card-title">FII / DII ACTIVITY</span></div>
+          <div class="fii-table" id="fii-table"></div>
+        </div>
+
+        <!-- Macro indicators -->
+        <div class="card macro-card">
+          <div class="card-header"><span class="card-title">MACRO INDICATORS</span></div>
+          <div class="macro-grid" id="macro-grid"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════ PORTFOLIO PANEL ══════ -->
+    <section class="panel" id="panel-portfolio">
+      <div class="portfolio-layout">
+        <div class="card port-table-card">
+          <div class="card-header">
+            <span class="card-title">MY HOLDINGS</span>
+            <div class="port-actions">
+              <input class="search-input" type="text" id="port-search" placeholder="Search symbol…"
+                oninput="filterHoldings(this.value)" />
+              <button class="add-btn" onclick="openAddModal()">+ ADD</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="holdings-table">
+              <thead>
+                <tr>
+                  <th>SYMBOL</th>
+                  <th>SECTOR</th>
+                  <th>QTY</th>
+                  <th>AVG COST</th>
+                  <th>LTP</th>
+                  <th>CURRENT VAL</th>
+                  <th>P&L</th>
+                  <th>P&L %</th>
+                  <th>DAY CHG</th>
+                  <th>WEIGHT</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="holdings-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="port-right-col">
+          <div class="card port-stats-card">
+            <div class="card-header"><span class="card-title">SUMMARY</span></div>
+            <div class="stats-list" id="port-stats-list"></div>
+          </div>
+          <div class="card port-chart-card">
+            <div class="card-header"><span class="card-title">P&L TREND (30D)</span></div>
+            <canvas id="pnl-trend-chart" width="300" height="180"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════ MARKETS PANEL ══════ -->
+    <section class="panel" id="panel-markets">
+      <div class="markets-layout">
+        <div class="card market-overview-card">
+          <div class="card-header">
+            <span class="card-title">NIFTY 50 CONSTITUENTS</span>
+            <input class="search-input" type="text" id="mkt-search" placeholder="Filter…"
+              oninput="filterMarket(this.value)" />
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="market-table">
+              <thead>
+                <tr>
+                  <th>SYMBOL</th>
+                  <th>SECTOR</th>
+                  <th>LTP</th>
+                  <th>CHG</th>
+                  <th>CHG %</th>
+                  <th>52W HIGH</th>
+                  <th>52W LOW</th>
+                  <th>MKT CAP</th>
+                  <th>P/E</th>
+                  <th>WATCH</th>
+                </tr>
+              </thead>
+              <tbody id="market-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="market-right-col">
+          <div class="card heatmap-card">
+            <div class="card-header"><span class="card-title">SECTOR HEATMAP</span></div>
+            <div class="heatmap-grid" id="heatmap-grid"></div>
+          </div>
+          <div class="card currency-card">
+            <div class="card-header"><span class="card-title">CURRENCY & COMMODITIES</span></div>
+            <div class="currency-list" id="currency-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════ NEWS PANEL ══════ -->
+    <section class="panel" id="panel-news">
+      <div class="news-layout">
+        <div class="news-main">
+          <div class="card news-card">
+            <div class="card-header">
+              <span class="card-title">MARKET NEWS &amp; ANALYSIS</span>
+              <div class="news-filters" id="news-filters">
+                <button class="filter-btn active" onclick="filterNews('all', this)">ALL</button>
+                <button class="filter-btn" onclick="filterNews('Economy', this)">ECONOMY</button>
+                <button class="filter-btn" onclick="filterNews('Earnings', this)">EARNINGS</button>
+                <button class="filter-btn" onclick="filterNews('Policy', this)">POLICY</button>
+                <button class="filter-btn" onclick="filterNews('Global', this)">GLOBAL</button>
+                <button class="filter-btn" onclick="filterNews('Sector', this)">SECTOR</button>
+              </div>
+            </div>
+            <div class="news-list" id="news-list"></div>
+          </div>
+        </div>
+        <div class="news-sidebar">
+          <div class="card news-sentiment-card">
+            <div class="card-header"><span class="card-title">SENTIMENT INDEX</span></div>
+            <div class="sentiment-block" id="sentiment-block"></div>
+          </div>
+          <div class="card news-trending-card">
+            <div class="card-header"><span class="card-title">TRENDING STOCKS</span></div>
+            <div class="trending-list" id="trending-list"></div>
+          </div>
+          <div class="card ipo-card">
+            <div class="card-header"><span class="card-title">UPCOMING IPOs</span></div>
+            <div class="ipo-list" id="ipo-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════ WATCHLIST PANEL ══════ -->
+    <section class="panel" id="panel-watchlist">
+      <div class="watchlist-layout">
+        <div class="card watchlist-card">
+          <div class="card-header">
+            <span class="card-title">WATCHLIST</span>
+            <input class="search-input" type="text" id="wl-search" placeholder="Add symbol…" id="wl-add-input" />
+          </div>
+          <div class="watchlist-grid" id="watchlist-grid"></div>
+        </div>
+        <div class="card alert-card">
+          <div class="card-header"><span class="card-title">PRICE ALERTS</span></div>
+          <div class="alert-list" id="alert-list"></div>
+          <div class="alert-form">
+            <select class="form-input" id="alert-symbol">
+              <option value="">Select Symbol</option>
+            </select>
+            <input class="form-input" type="number" id="alert-price" placeholder="Target Price (₹)" />
+            <select class="form-input" id="alert-dir">
+              <option value="above">Above</option>
+              <option value="below">Below</option>
+            </select>
+            <button class="add-btn" onclick="addAlert()">SET ALERT</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ─── ADD HOLDING MODAL ─── -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title">ADD HOLDING</span>
+        <button class="modal-close" onclick="closeAddModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-index" value="" />
+        <div class="form-group">
+          <label class="form-label">SYMBOL</label>
+          <input class="form-input" type="text" id="form-symbol" placeholder="e.g. RELIANCE"
+            list="symbol-suggestions" />
+          <datalist id="symbol-suggestions"></datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label">SECTOR</label>
+          <select class="form-input" id="form-sector">
+            <option value="Energy">Energy</option>
+            <option value="Financials">Financials</option>
+            <option value="IT">IT</option>
+            <option value="FMCG">FMCG</option>
+            <option value="Pharma">Pharma</option>
+            <option value="Auto">Auto</option>
+            <option value="Metals">Metals</option>
+            <option value="Telecom">Telecom</option>
+            <option value="Infra">Infra</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">QUANTITY</label>
+            <input class="form-input" type="number" id="form-qty" placeholder="No. of shares" min="1" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">AVG BUY PRICE (₹)</label>
+            <input class="form-input" type="number" id="form-avg" placeholder="e.g. 2450.00" step="0.01" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">CURRENT LTP (₹)</label>
+          <input class="form-input" type="number" id="form-ltp" placeholder="Latest traded price" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">DAY CHANGE (%)</label>
+          <input class="form-input" type="number" id="form-daychg" placeholder="e.g. 1.25 or -0.85" step="0.01" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeAddModal()">CANCEL</button>
+        <button class="btn-primary" onclick="saveHolding()">SAVE HOLDING</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── TOAST ─── -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
