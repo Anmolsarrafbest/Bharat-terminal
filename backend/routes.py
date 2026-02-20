@@ -15,6 +15,7 @@ from .config import (
 from .stock_data import fetch_stock_data, save_market_close
 from .groww_api import groww_is_configured
 from .upstox_api import upstox_is_configured, upstox_has_token
+from .portfolio import fetch_portfolio_from_groww, get_portfolio_with_live_prices
 import backend.config as cfg
 
 
@@ -231,3 +232,21 @@ def register_routes(app):
     def api_save_closes():
         save_market_close()
         return jsonify({'status': 'saved', 'file': 'saved_closes.json'})
+
+    # ── Portfolio endpoints ──
+
+    @app.route('/api/portfolio')
+    def api_portfolio():
+        """Get portfolio with live prices"""
+        data = get_portfolio_with_live_prices()
+        if data:
+            return jsonify(data)
+        return jsonify({'error': 'No portfolio data. Sync first via /api/portfolio/sync'}), 404
+
+    @app.route('/api/portfolio/sync')
+    def api_portfolio_sync():
+        """Import/refresh portfolio from Groww"""
+        result = fetch_portfolio_from_groww()
+        if result:
+            return jsonify({'status': 'synced', 'holdings': len(result['holdings']), 'invested': result['totalInvested']})
+        return jsonify({'error': 'Failed to sync portfolio from Groww'}), 500

@@ -36,22 +36,35 @@ CORS(app)
 register_routes(app)
 
 
-# ═══════════════════════════════════════════
-#  BACKGROUND THREADS
-# ═══════════════════════════════════════════
+def is_market_open():
+    """Check if Indian stock market is currently open (9:15 AM - 3:30 PM, Mon-Fri)"""
+    now = datetime.now()
+    weekday = now.weekday()  # 0=Mon, 6=Sun
+    if weekday >= 5:
+        return False
+    market_start = now.replace(hour=9, minute=15, second=0)
+    market_end = now.replace(hour=15, minute=30, second=0)
+    return market_start <= now <= market_end
+
 
 def stock_refresh_loop():
-    """Refresh stocks every 30 seconds"""
+    """Refresh stocks every 30 seconds — only during market hours"""
     while True:
-        fetch_stock_data()
-        time.sleep(30)
+        if is_market_open():
+            fetch_stock_data()
+            time.sleep(30)
+        else:
+            time.sleep(60)  # Check every minute when market is closed
 
 
 def news_refresh_loop():
-    """Refresh news every 5 minutes"""
+    """Refresh news every 5 minutes — only during market hours"""
     while True:
-        fetch_news_data()
-        time.sleep(300)
+        if is_market_open():
+            fetch_news_data()
+            time.sleep(300)
+        else:
+            time.sleep(300)
 
 
 def market_close_saver_loop():
@@ -86,7 +99,10 @@ if __name__ == '__main__':
     print("  ✓ Data sources: Groww → Upstox → Google Finance → yfinance")
     print("  ✓ News: ET, Moneycontrol, Livemint RSS + scraping")
     print("  ✓ Day-over-day tracking via saved_closes.json")
-    print("  ✓ Auto-save at 3:31 PM IST (market close)")
+    print("  ✓ Auto-save & shutdown at 3:31 PM IST")
+
+    market_status = "🟢 OPEN" if is_market_open() else "🔴 CLOSED"
+    print(f"  ✓ Market status: {market_status}")
 
     saved = _load_saved_closes()
     if saved:
@@ -103,12 +119,22 @@ if __name__ == '__main__':
     # Pre-fill cache from saved_closes.json so API returns data instantly
     prefill_cache_from_saved_closes()
 
+    # Load cached portfolio (no auto-sync — user triggers via button)
+    from backend.portfolio import load_portfolio
+    if load_portfolio():
+        print("  ✓ Portfolio loaded from cache")
+    else:
+        print("  ⚠ No portfolio yet → sync via http://localhost:5000/api/portfolio/sync")
+
     print(f"  ✓ Starting at http://localhost:5000\n")
 
-    # Start live fetch in background (don't block server startup)
-    print("  ⏳ Live data loading in background...\n")
-    threading.Thread(target=fetch_stock_data, daemon=True).start()
-    threading.Thread(target=fetch_news_data, daemon=True).start()
+    # Fetch data once at startup, then let refresh loops handle it
+    if is_market_open():
+        print("  ⏳ Market is open — fetching live data...\n")
+        threading.Thread(target=fetch_stock_data, daemon=True).start()
+        threading.Thread(target=fetch_news_data, daemon=True).start()
+    else:
+        print("  💤 Market is closed — using cached data. Live fetch starts when market opens.\n")
 
     # Start background threads
     threading.Thread(target=stock_refresh_loop, daemon=True).start()

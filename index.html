@@ -97,7 +97,12 @@
         <div class="card portfolio-summary-card" id="port-summary">
           <div class="card-header">
             <span class="card-title">PORTFOLIO OVERVIEW</span>
-            <span class="card-badge" id="port-badge">TODAY</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button class="card-badge" id="port-sync-btn" onclick="syncPortfolio()"
+                style="cursor:pointer;border:1px solid rgba(0,255,200,0.3);background:rgba(0,255,200,0.08);color:#0fc;font-size:11px;padding:3px 10px;border-radius:4px;"
+                title="Import/update portfolio from Groww">⟳ SYNC</button>
+              <span class="card-badge" id="port-badge">TODAY</span>
+            </div>
           </div>
           <div class="port-hero">
             <div class="port-total">

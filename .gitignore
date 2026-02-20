@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 node_modules/
 saved_closes.json
+portfolio.json
